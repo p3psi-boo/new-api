@@ -75,6 +75,7 @@ const EditChannel = (props) => {
     auto_ban: 1,
     test_model: '',
     groups: ['default'],
+    ratio: 1,
   };
   const [batch, setBatch] = useState(false);
   const [autoBan, setAutoBan] = useState(true);
@@ -273,6 +274,7 @@ const EditChannel = (props) => {
       return;
     }
     localInputs.auto_ban = autoBan ? 1 : 0;
+    localInputs.ratio = parseFloat(localInputs.ratio)
     localInputs.models = localInputs.models.join(',');
     localInputs.group = localInputs.groups.join(',');
     if (isEdit) {
@@ -746,20 +748,20 @@ const EditChannel = (props) => {
           >
             填入模板
           </Typography.Text>
-          {/*<div style={{ marginTop: 10 }}>*/}
-          {/*  <Typography.Text strong>*/}
-          {/*    最大请求token（0表示不限制）：*/}
-          {/*  </Typography.Text>*/}
-          {/*</div>*/}
-          {/*<Input*/}
-          {/*  label='最大请求token'*/}
-          {/*  name='max_input_tokens'*/}
-          {/*  placeholder='默认为0，表示不限制'*/}
-          {/*  onChange={(value) => {*/}
-          {/*    handleInputChange('max_input_tokens', value);*/}
-          {/*  }}*/}
-          {/*  value={inputs.max_input_tokens}*/}
-          {/*/>*/}
+          <div style={{ marginTop: 10 }}>
+            <Typography.Text strong>
+              费率（默认为1）：
+            </Typography.Text>
+          </div>
+          <Input
+            label='费率'
+            name='ratio'
+            placeholder='默认为1'
+            onChange={(value) => {
+              handleInputChange('ratio', value);
+            }}
+            value={inputs.ratio}
+          />
         </Spin>
       </SideSheet>
     </>

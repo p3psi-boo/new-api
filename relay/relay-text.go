@@ -97,6 +97,7 @@ func TextHelper(c *gin.Context) *dto.OpenAIErrorWithStatusCode {
 	var preConsumedQuota int
 	var ratio float64
 	var modelRatio float64
+	channelRatio := c.GetFloat64("ratio")
 	//err := service.SensitiveWordsCheck(textRequest)
 	promptTokens, err, sensitiveTrigger := getPromptTokens(textRequest, relayInfo)
 
@@ -115,9 +116,9 @@ func TextHelper(c *gin.Context) *dto.OpenAIErrorWithStatusCode {
 		}
 		modelRatio = common.GetModelRatio(textRequest.Model)
 		ratio = modelRatio * groupRatio
-		preConsumedQuota = int(float64(preConsumedTokens) * ratio)
+		preConsumedQuota = int(float64(preConsumedTokens) * ratio * channelRatio)
 	} else {
-		preConsumedQuota = int(modelPrice * common.QuotaPerUnit * groupRatio)
+		preConsumedQuota = int(modelPrice * common.QuotaPerUnit * groupRatio * channelRatio)
 	}
 
 	// pre-consume quota 预消耗配额
@@ -178,7 +179,7 @@ func TextHelper(c *gin.Context) *dto.OpenAIErrorWithStatusCode {
 		service.ResetStatusCode(openaiErr, statusCodeMappingStr)
 		return openaiErr
 	}
-	postConsumeQuota(c, relayInfo, *textRequest, usage, ratio, preConsumedQuota, userQuota, modelRatio, groupRatio, modelPrice, success)
+	postConsumeQuota(c, relayInfo, *textRequest, usage, ratio, preConsumedQuota, userQuota, modelRatio, groupRatio, channelRatio, modelPrice, success)
 	return nil
 }
 
@@ -256,7 +257,7 @@ func returnPreConsumedQuota(c *gin.Context, tokenId int, userQuota int, preConsu
 }
 
 func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, textRequest dto.GeneralOpenAIRequest,
-	usage *dto.Usage, ratio float64, preConsumedQuota int, userQuota int, modelRatio float64, groupRatio float64,
+	usage *dto.Usage, ratio float64, preConsumedQuota int, userQuota int, modelRatio float64, groupRatio float64, channelRatio float64,
 	modelPrice float64, usePrice bool) {
 
 	useTimeSeconds := time.Now().Unix() - relayInfo.StartTime.Unix()
@@ -267,7 +268,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, textRe
 	completionRatio := common.GetCompletionRatio(textRequest.Model)
 
 	quota := 0
-	if !usePrice {
+	if !usePrice { // 找不到模型价格
 		quota = promptTokens + int(math.Round(float64(completionTokens)*completionRatio))
 		quota = int(math.Round(float64(quota) * ratio))
 		if ratio != 0 && quota <= 0 {
@@ -276,12 +277,13 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, textRe
 	} else {
 		quota = int(modelPrice * common.QuotaPerUnit * groupRatio)
 	}
+	quota = int(math.Round(channelRatio)) * quota
 	totalTokens := promptTokens + completionTokens
 	var logContent string
 	if modelPrice == -1 {
-		logContent = fmt.Sprintf("模型倍率 %.2f，分组倍率 %.2f，补全倍率 %.2f", modelRatio, groupRatio, completionRatio)
+		logContent = fmt.Sprintf("模型倍率 %.2f，分组倍率 %.2f，补全倍率 %.2f，渠道倍率：%.2f", modelRatio, groupRatio, completionRatio, channelRatio)
 	} else {
-		logContent = fmt.Sprintf("模型价格 %.2f，分组倍率 %.2f", modelPrice, groupRatio)
+		logContent = fmt.Sprintf("模型价格 %.2f，分组倍率 %.2f，渠道倍率：%.2f", modelPrice, groupRatio, channelRatio)
 	}
 
 	// record all the consume log even if quota is 0
@@ -320,6 +322,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, textRe
 	other["group_ratio"] = groupRatio
 	other["completion_ratio"] = completionRatio
 	other["model_price"] = modelPrice
+	other["channel_ratio"] = channelRatio
 	model.RecordConsumeLog(ctx, relayInfo.UserId, relayInfo.ChannelId, promptTokens, completionTokens, logModel, tokenName, quota, logContent, relayInfo.TokenId, userQuota, int(useTimeSeconds), relayInfo.IsStream, other)
 
 	//if quota != 0 {
