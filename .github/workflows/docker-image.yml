@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy API
 
 on:
   push:
@@ -23,17 +23,33 @@ jobs:
         run: |
           docker build -t new-api .
 
-      - name: Transfer image to server
+      - name: Compress
         run: |
-          docker save new-api | gzip | ssh ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} 'cat - > /tmp/new-api.tar.gz'
-          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} 'docker load -i /tmp/new-api.tar.gz'
+          docker save new-api | gzip > new-api.tar.gz
+
+      - name: Transfer image to server
+        uses: appleboy/scp-action@v0.0.1
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "new-api.tar.gz"
+          target: "/tmp/new-api.tar.gz"
 
       - name: SSH to server and deploy
-        run: |
-          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} 'cd new-api && docker compose pull && docker compose up -d'
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            docker load -i /tmp/new-api.tar.gz
+            docker compose pull
+            docker compose up -d
+            rm -rf /tmp/new-api.tar.gz
 
       - name: Send notification
         run: |
           curl -X POST -H 'Content-Type: application/json' \
-            -d '{"message": "New-API deployed successfully."}' \
+            -d '{"message": "API deployed successfully."}' \
             ${{ env.NTFY_URL }}/${{ env.NTFY_TOPIC }}
