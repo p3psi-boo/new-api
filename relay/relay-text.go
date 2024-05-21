@@ -323,6 +323,9 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, textRe
 	other["completion_ratio"] = completionRatio
 	other["model_price"] = modelPrice
 	other["channel_ratio"] = channelRatio
+	adminInfo := make(map[string]interface{})
+	adminInfo["use_channel"] = ctx.GetStringSlice("use_channel")
+	other["admin_info"] = adminInfo
 	model.RecordConsumeLog(ctx, relayInfo.UserId, relayInfo.ChannelId, promptTokens, completionTokens, logModel, tokenName, quota, logContent, relayInfo.TokenId, userQuota, int(useTimeSeconds), relayInfo.IsStream, other)
 
 	//if quota != 0 {
