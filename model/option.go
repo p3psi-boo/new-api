@@ -109,6 +109,7 @@ func InitOptionMap() {
 	common.OptionMap["StopOnSensitiveEnabled"] = strconv.FormatBool(setting.StopOnSensitiveEnabled)
 	common.OptionMap["SensitiveWords"] = setting.SensitiveWordsToString()
 	common.OptionMap["StreamCacheQueueLength"] = strconv.Itoa(setting.StreamCacheQueueLength)
+	common.OptionMap["AutomaticDisableKeywords"] = setting.AutomaticDisableKeywordsToString()
 
 	// LDAP 相关配置
 	common.OptionMap["LDAPAuthEnabled"] = strconv.FormatBool(common.LDAPAuthEnabled)
@@ -345,6 +346,8 @@ func updateOptionMap(key string, value string) (err error) {
 		common.QuotaPerUnit, _ = strconv.ParseFloat(value, 64)
 	case "SensitiveWords":
 		setting.SensitiveWordsFromString(value)
+	case "AutomaticDisableKeywords":
+		setting.AutomaticDisableKeywordsFromString(value)
 	case "StreamCacheQueueLength":
 		setting.StreamCacheQueueLength, _ = strconv.Atoi(value)
 	case "LDAPHost":
